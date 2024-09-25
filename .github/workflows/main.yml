@@ -3,7 +3,7 @@ name: JUnit (MC 1.19.4-1.20.4)
 on:
     push:
         branches:
-            - 'feature/folia'
+            - 'feature/**'
     pull_request:
 
 jobs:

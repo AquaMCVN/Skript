@@ -1,0 +1,18 @@
+name: Skript
+on:
+  push:
+    branches: 
+      - 'feature/folia'
+    paths:
+      - '.github/workflows/skript.yml'
+  schedule:
+    - cron: '0 */5 * * *'
+jobs:
+  Skript:
+    uses: HSGamer/ConstructProjects/.github/workflows/gradle-build.yml@main
+    with:
+      repository: "AquaMCVN/Skript"
+      target: "bin/*"
+      name: "Skript"
+      java: 21
+      readonly: true

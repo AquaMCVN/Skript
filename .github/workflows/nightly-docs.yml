@@ -1,46 +1,35 @@
-name: Nightly documentation
+name: Java 21 CI (MC 1.20.6+)
 
 on:
-  push:
-    branches:
-      - '**'
-    tags-ignore:
-      - '**'
+    push:
+        branches:
+            - 'feature/**'
+            - master
+    pull_request:
 
 jobs:
-    nightly-docs:
+    build:
         if: "! contains(toJSON(github.event.commits.*.message), '[ci skip]')"
         runs-on: ubuntu-latest
         steps:
-            - name: Configure workflow
-              id: configuration
-              run: |
-                BRANCH_NAME="${GITHUB_REF#refs/*/}"
-                echo "BRANCH_NAME=${BRANCH_NAME}" >> $GITHUB_OUTPUT
-                echo "DOCS_OUTPUT_DIR=${GITHUB_WORKSPACE}/skript-docs/docs/nightly/${BRANCH_NAME}" >> $GITHUB_OUTPUT
-                echo "DOCS_REPO_DIR=${GITHUB_WORKSPACE}/skript-docs" >> $GITHUB_OUTPUT
-                echo "SKRIPT_REPO_DIR=${GITHUB_WORKSPACE}/skript" >> $GITHUB_OUTPUT
-            - name: Checkout Skript
-              uses: actions/checkout@v3
+            - uses: actions/checkout@v4
               with:
                   submodules: recursive
-                  path: skript
-            - name: Setup documentation environment
-              uses: ./skript/.github/workflows/docs/setup-docs
+            - name: validate gradle wrapper
+              uses: gradle/wrapper-validation-action@v2
+            - name: Set up JDK 21
+              uses: actions/setup-java@v4
               with:
-                  docs_deploy_key: ${{ secrets.DOCS_DEPLOY_KEY }}
-                  docs_output_dir: ${{ steps.configuration.outputs.DOCS_OUTPUT_DIR }}
-            - name: Generate documentation
-              uses: ./skript/.github/workflows/docs/generate-docs
+                  java-version: '21'
+                  distribution: 'adopt'
+                  cache: gradle
+            - name: Grant execute permission for gradlew
+              run: chmod +x gradlew
+            - name: Build Skript and run test scripts
+              run: ./gradlew clean skriptTestJava21
+            - name: Upload Nightly Build
+              uses: actions/upload-artifact@v4
+              if: success()
               with:
-                  docs_output_dir: ${{ steps.configuration.outputs.DOCS_OUTPUT_DIR }}
-                  docs_repo_dir: ${{ steps.configuration.outputs.DOCS_REPO_DIR }}
-                  skript_repo_dir: ${{ steps.configuration.outputs.SKRIPT_REPO_DIR }}
-            - name: Push nightly documentation
-              uses: ./skript/.github/workflows/docs/push-docs
-              with:
-                  docs_output_dir: ${{ steps.configuration.outputs.DOCS_OUTPUT_DIR }}
-                  docs_repo_dir: ${{ steps.configuration.outputs.DOCS_REPO_DIR }}
-                  git_name: Nightly Docs Bot
-                  git_email: nightlydocs@skriptlang.org
-                  git_commit_message: "Update ${{ steps.configuration.outputs.BRANCH_NAME }} branch nightly docs to ${{ github.repository }}@${{ github.sha }}"
+                  name: skript-nightly
+                  path: build/libs/*
